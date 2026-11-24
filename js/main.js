@@ -173,20 +173,28 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
         const r = st.querySelector('.step__dot').getBoundingClientRect();
         return [r.left + r.width / 2 - box.left, r.top + r.height / 2 - box.top];
       });
-      // Trazo tipo "circuito": tramos rectos con quiebres suaves de 45°
-      let d = `M ${pts[0][0]} ${pts[0][1]}`;
-      for (let i = 1; i < pts.length; i++) d += ` L ${pts[i][0]} ${pts[i][1]}`;
+      // En escritorio (pasos en fila) la línea entra por el borde izquierdo de la
+      // pantalla y sale por el derecho, para que el trazo ocupe todo el ancho.
+      // Los extremos son los bordes del escenario (máximo 1920 de diseño, nunca más).
+      const row = Math.abs(pts[pts.length - 1][1] - pts[0][1]) < 2;
+      const stage = proc.querySelector('.process__stage').getBoundingClientRect();
+      const path = row
+        ? [[stage.left - box.left, pts[0][1]], ...pts, [stage.right - box.left, pts[0][1]]]
+        : pts;
+      let d = `M ${path[0][0]} ${path[0][1]}`;
+      for (let i = 1; i < path.length; i++) d += ` L ${path[i][0]} ${path[i][1]}`;
       base.setAttribute('d', d);
       line.setAttribute('d', d);
       len = line.getTotalLength();
       line.style.strokeDasharray = `${len} ${len}`;
       // Proporción del trazo en la que se alcanza cada paso
       let acc = 0;
-      stops = [0];
-      for (let i = 1; i < pts.length; i++) {
-        acc += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-        stops.push(acc / len);
+      const dist = [0];
+      for (let i = 1; i < path.length; i++) {
+        acc += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+        dist.push(acc / len);
       }
+      stops = row ? dist.slice(1, -1) : dist;
       const sc = sceneOf(proc);
       drawLine(sc ? sc.p : 1, sc);
     }
@@ -269,7 +277,9 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
     projects.forEach((proj) => {
       const btn = proj.querySelector('.proj__toggle');
       btn.addEventListener('click', () => {
-        const open = !proj.classList.contains('is-open');
+        // En escritorio (tarjetas en fila) un clic siempre abre: nunca deja las tres vacías
+        const row = window.matchMedia('(min-width: 960px)').matches;
+        const open = row || !proj.classList.contains('is-open');
         projects.forEach((p) => setOpen(p, p === proj ? open : false));
       });
       if (FINE_POINTER) {

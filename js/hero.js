@@ -94,7 +94,12 @@
   }
 
   function resize(initial) {
+    // Medimos sin el zoom que aplica el scroll (si la página cargó a media
+    // página, el canvas está ampliado y las medidas saldrían mal).
+    var prevTransform = canvas.style.transform;
+    canvas.style.transform = 'none';
     var r = canvas.getBoundingClientRect();
+    var oldW = W, oldH = H;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = r.width; H = r.height;
     canvas.width = Math.round(W * dpr);
@@ -102,6 +107,11 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     var targets = buildTargets();
+    canvas.style.transform = prevTransform;
+
+    // Si la pantalla cambió de tamaño, las partículas que ya existen se
+    // reparten en proporción al área nueva (no se quedan en el área vieja).
+    var sx = oldW ? W / oldW : 1, sy = oldH ? H / oldH : 1;
     var next = [];
     for (var i = 0; i < targets.length; i++) {
       var p = particles[i];
@@ -114,6 +124,7 @@
           rot: Math.random() * Math.PI
         };
       }
+      else if (sx !== 1 || sy !== 1) { p.x *= sx; p.y *= sy; }
       p.tx = targets[i].x; p.ty = targets[i].y; p.c = targets[i].c;
       next.push(p);
     }
@@ -235,8 +246,8 @@
 
   // ---- Tamaño ----
   var lastW = 0, lastH = 0, resizeTimer = 0;
-  new ResizeObserver(function () {
-    var r = stage.getBoundingClientRect();
+  var ro = new ResizeObserver(function () {
+    var r = { width: canvas.clientWidth, height: stage.clientHeight };
     // Ignora los cambios de alto por la barra del navegador móvil
     if (Math.abs(r.width - lastW) < 1 && Math.abs(r.height - lastH) < 80) return;
     var initial = lastW === 0;
@@ -244,7 +255,9 @@
     clearTimeout(resizeTimer);
     if (initial) resize(true);
     else resizeTimer = setTimeout(function () { resize(false); }, 120);
-  }).observe(stage);
+  });
+  ro.observe(stage);
+  ro.observe(canvas);
 
   // Cuando cargan las fuentes el texto cambia de alto y la caja de la π se mueve
   if (document.fonts && document.fonts.ready) {
