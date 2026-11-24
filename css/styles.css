@@ -419,10 +419,18 @@ p { text-wrap: pretty; }
   opacity: var(--s);
 }
 @media (min-width: 768px) { .motion .frag__clean { left: calc(18 * var(--u)); right: calc(18 * var(--u)); top: calc(18 * var(--u)); } }
-.frag__clean i { display: block; height: calc(8 * var(--u)); border-radius: calc(4 * var(--u)); background: var(--tint); }
-.frag__clean i:first-child { width: calc(28 * var(--u)); height: calc(28 * var(--u)); border-radius: calc(9 * var(--u)); background: var(--grad); }
-.frag__clean i:nth-child(2) { width: 80%; }
-.frag__clean i:nth-child(3) { width: 55%; }
+/* Estado resuelto: palomita verde que se dibuja al acomodarse (sin barras que parezcan "cargando") */
+.frag__clean svg {
+  width: calc(38 * var(--u)); height: calc(38 * var(--u)); padding: calc(8 * var(--u));
+  border-radius: 50%; background: var(--grad);
+  box-shadow: 0 calc(6 * var(--u)) calc(16 * var(--u)) rgba(0, 163, 92, .28);
+  transform: scale(calc(0.6 + 0.4 * var(--s, 1)));
+}
+.frag__clean path {
+  fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 20; stroke-dashoffset: calc(20 * (1 - clamp(0, (var(--s, 1) - 0.35) / 0.65, 1)));
+}
+@media (min-width: 768px) { .frag__clean svg { width: calc(44 * var(--u)); height: calc(44 * var(--u)); padding: calc(10 * var(--u)); } }
 .motion .frag__before { display: block; opacity: calc(1 - var(--s)); }
 .motion .frag__after {
   position: absolute; left: 0; right: 0; bottom: 0; margin: 0;
@@ -432,12 +440,20 @@ p { text-wrap: pretty; }
 
 .problem__caption {
   text-align: center; font-family: var(--f-display); font-weight: 600; letter-spacing: -0.03em;
-  font-size: clamp(1.5rem, 1rem + 2.4vw, 2.8rem);
 }
-.motion .problem__caption {
-  opacity: clamp(0, (var(--p) - 0.76) / 0.12, 1);
-  transform: translateY(calc((1 - clamp(0, (var(--p) - 0.76) / 0.12, 1)) * calc(24 * var(--u))));
+.problem__help {
+  display: block; font-size: var(--fs-lead); letter-spacing: -0.01em; color: var(--text-2);
+  margin-bottom: calc(6 * var(--u));
 }
+.problem__tagline { display: block; font-size: clamp(1.5rem, 1rem + 2.4vw, 2.8rem); line-height: 1.1; }
+/* Primero aparece la frase de ayuda y después el remate */
+.motion .problem__help, .motion .problem__tagline {
+  --c: clamp(0, (var(--p) - var(--at)) / 0.1, 1);
+  opacity: var(--c);
+  transform: translateY(calc((1 - var(--c)) * calc(20 * var(--u))));
+}
+.motion .problem__help { --at: 0.72; }
+.motion .problem__tagline { --at: 0.82; }
 
 /* =========================================================
    FRASE PUENTE — se enciende palabra por palabra
