@@ -334,29 +334,52 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
   const compileEls = document.querySelectorAll('[data-compile]');
   if (compileEls.length && MOTION) {
     const GLYPHS = '01{}[]<>/=+*#$%&';
-    const run = (el) => {
+    const SCRAMBLE = 60;   // cada cuánto cambian los caracteres aleatorios (ms)
+    const SETTLE = 400;    // al final, los caracteres se fijan de izquierda a derecha en este tiempo
+
+    // Cambia caracteres al azar y se detiene a los `end` ms
+    const run = (el, end = 900) => {
       const final = el.dataset.compile;
-      const dur = 900;
       const t0 = performance.now();
+      let last = -Infinity;
       const step = (now) => {
-        const k = clamp((now - t0) / dur);
+        const t = now - t0;
+        if (t < end && now - last < SCRAMBLE) { requestAnimationFrame(step); return; }
+        last = now;
+        const k = clamp((t - (end - SETTLE)) / SETTLE);
         const fixed = Math.floor(final.length * k);
         let out = final.slice(0, fixed);
         for (let i = fixed; i < final.length; i++) {
           out += final[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
         }
         el.textContent = out;
-        if (k < 1) requestAnimationFrame(step);
+        if (t < end) requestAnimationFrame(step);
         else el.textContent = final;
       };
       requestAnimationFrame(step);
     };
+
+    // Grupos (las cifras del CTA): todas cambian a la vez y se van
+    // deteniendo de izquierda a derecha.
+    const FIRST = 1100;    // cuándo se detiene la primera
+    const STAGGER = 650;   // tiempo entre una y la siguiente
+    document.querySelectorAll('[data-compile-group]').forEach((group) => {
+      const els = [...group.querySelectorAll('[data-compile]')];
+      const gio = new IntersectionObserver((entries) => {
+        if (!entries[0].isIntersecting) return;
+        gio.disconnect();
+        els.forEach((el, i) => run(el, FIRST + i * STAGGER));
+      }, { threshold: 0.5 });
+      gio.observe(group);
+    });
+
+    // Textos sueltos: se compilan al aparecer
     const cio = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) { run(e.target); cio.unobserve(e.target); }
       });
     }, { threshold: 0.6 });
-    compileEls.forEach((el) => cio.observe(el));
+    compileEls.forEach((el) => { if (!el.closest('[data-compile-group]')) cio.observe(el); });
   }
 
   /* ---------- Aparición suave de bloques ---------- */
