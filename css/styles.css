@@ -296,7 +296,10 @@ p { text-wrap: pretty; }
   aspect-ratio: 795 / 622;
 }
 .hero__static { width: 100%; height: auto; }
-.motion .hero__static { visibility: hidden; }
+/* Con animación, el logo lo dibuja el canvas. Si el canvas no arranca
+   (falta pi-path.js, error de JS, sin canvas), JS añade .hero--fallback
+   y vuelve a mostrarse el logo fijo. */
+.motion .hero:not(.hero--fallback) .hero__static { visibility: hidden; }
 
 .hero__copy { grid-row: 2; position: relative; max-width: 40rem; }
 .motion .hero__copy {

@@ -10,15 +10,22 @@
   'use strict';
 
   var root = document.documentElement;
-  if (!root.classList.contains('motion') || !window.PINU_PI) return;
+  if (!root.classList.contains('motion')) return;
 
   var hero = document.querySelector('.hero');
   var stage = hero && hero.querySelector('.hero__stage');
   var canvas = hero && hero.querySelector('.hero__canvas');
   var markBox = hero && hero.querySelector('.hero__mark');
-  if (!canvas || !canvas.getContext) return;
+  if (!hero) return;
 
-  var ctx = canvas.getContext('2d');
+  // Si algo falla, se muestra el logo fijo en lugar de dejar el hueco vacío
+  function fallback() {
+    hero.classList.remove('hero--canvas');
+    hero.classList.add('hero--fallback');
+  }
+
+  var ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+  if (!window.PINU_PI || !stage || !markBox || !ctx) { fallback(); return; }
   var PI = window.PINU_PI;
   var piPath = new Path2D(PI.d);
 
@@ -246,21 +253,33 @@
 
   // ---- Tamaño ----
   var lastW = 0, lastH = 0, resizeTimer = 0;
+  var H_TOLERANCE = window.matchMedia('(pointer: coarse)').matches ? 80 : 1;
+  function safeResize(initial) {
+    try {
+      resize(initial);
+      if (particles.length) hero.classList.add('hero--canvas');
+      else fallback();
+    } catch (err) {
+      canvas.style.transform = '';
+      stop();
+      fallback();
+    }
+  }
   var ro = new ResizeObserver(function () {
     var r = { width: canvas.clientWidth, height: stage.clientHeight };
-    // Ignora los cambios de alto por la barra del navegador móvil
-    if (Math.abs(r.width - lastW) < 1 && Math.abs(r.height - lastH) < 80) return;
+    // En celular ignora los cambios de alto por la barra del navegador
+    if (Math.abs(r.width - lastW) < 1 && Math.abs(r.height - lastH) < H_TOLERANCE) return;
     var initial = lastW === 0;
     lastW = r.width; lastH = r.height;
     clearTimeout(resizeTimer);
-    if (initial) resize(true);
-    else resizeTimer = setTimeout(function () { resize(false); }, 120);
+    if (initial) safeResize(true);
+    else resizeTimer = setTimeout(function () { safeResize(false); }, 120);
   });
   ro.observe(stage);
   ro.observe(canvas);
 
   // Cuando cargan las fuentes el texto cambia de alto y la caja de la π se mueve
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(function () { if (lastW) resize(false); });
+    document.fonts.ready.then(function () { if (lastW) safeResize(false); });
   }
 })();
