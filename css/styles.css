@@ -262,7 +262,7 @@ p { text-wrap: pretty; }
   background: radial-gradient(120% 80% at 70% 30%, #003A24 0%, var(--deep-2) 60%) var(--deep-2);
   color: var(--on-dark);
 }
-.motion .hero { height: 160svh; }
+.motion .hero { height: 220svh; }
 .hero__stage {
   min-height: 100svh;
   display: grid;
@@ -279,12 +279,22 @@ p { text-wrap: pretty; }
   translate: -50% 0;
   transform-origin: var(--ox, 50%) var(--oy, 35%);
 }
+/* Al bajar: el texto se va, la π viaja al centro de la pantalla y se atenúa
+   (sin desaparecer, para que nunca quede la pantalla verde vacía) */
+/* 1) el texto se va (0–40 %)  2) la π viaja al centro (30–85 %) */
+.motion .hero { --m: clamp(0, (var(--p) - 0.3) / 0.55, 1); }
+.motion .hero__glow {
+  left: calc(var(--mx, 50%) + (50% - var(--mx, 50%)) * var(--m));
+  top: calc(var(--my, 35%) + (50% - var(--my, 35%)) * var(--m));
+}
 .motion .hero__canvas {
-  transform: scale(calc(1 + var(--p) * 0.9));
-  opacity: calc(1 - var(--p) * 1.6);
+  transform:
+    translate(calc((50% - var(--ox, 50%)) * var(--m)), calc((50% - var(--oy, 35%)) * var(--m)))
+    scale(calc(1 + var(--p) * 0.3));
+  opacity: calc(1 - var(--p) * 0.6);
 }
 .hero__glow {
-  position: absolute; width: 70vmax; height: 70vmax; left: var(--ox, 50%); top: var(--oy, 35%);
+  position: absolute; width: 70vmax; height: 70vmax; left: var(--mx, 50%); top: var(--my, 35%);
   translate: -50% -50%;
   background: radial-gradient(closest-side, rgba(0, 210, 111, .16), transparent);
   pointer-events: none;
@@ -296,12 +306,15 @@ p { text-wrap: pretty; }
   aspect-ratio: 795 / 622;
 }
 .hero__static { width: 100%; height: auto; }
-.motion .hero__static { visibility: hidden; }
+/* Con animación, el logo lo dibuja el canvas. Si el canvas no arranca
+   (falta pi-path.js, error de JS, sin canvas), JS añade .hero--fallback
+   y vuelve a mostrarse el logo fijo. */
+.motion .hero:not(.hero--fallback) .hero__static { visibility: hidden; }
 
 .hero__copy { grid-row: 2; position: relative; max-width: 40rem; }
 .motion .hero__copy {
   transform: translateY(calc(var(--p) * -14vh));
-  opacity: calc(1 - var(--p) * 2.2);
+  opacity: calc(1 - var(--p) * 2.5);
 }
 .hero__title { font-size: var(--fs-hero); font-weight: 600; letter-spacing: -0.045em; line-height: .98; margin-top: calc(14 * var(--u)); }
 .hero__lead { margin-top: calc(18 * var(--u)); font-size: var(--fs-lead); color: var(--on-dark-2); max-width: 32rem; }
@@ -336,6 +349,9 @@ p { text-wrap: pretty; }
    EL PROBLEMA — los fragmentos se acomodan en un tablero
    ========================================================= */
 .problem { background: var(--white); }
+/* --q = progreso de la animación. Caída ágil (~0.75 pantallas), pausa con los
+   problemas, cambio a soluciones, remate y una pausa final antes de soltar. */
+.motion .problem { --q: min(1, calc(var(--p) / 0.98)); }
 /* Retícula de puntos en los costados: visible en los márgenes, se desvanece hacia el centro */
 .problem__stage { position: relative; isolation: isolate; }
 .problem__stage::before {
@@ -396,11 +412,11 @@ p { text-wrap: pretty; }
 
 /* Animación: del caos al tablero */
 .motion .frag {
-  /* 1) Caen y se acomodan (hasta ~45%)
-     2) Se quedan quietas mostrando el problema (45%–60%)
-     3) Cambian a la solución (60%–72%) */
-  --t: clamp(0, (var(--p) - 0.03 - var(--d, 0)) / 0.25, 1);
-  --s: clamp(0, (var(--p) - 0.6 - var(--d, 0) * 0.3) / 0.1, 1);
+  /* (en --q) 1) Caen y se acomodan (hasta ~33 %)
+     2) Se quedan quietas mostrando el problema (33 %–47 %)
+     3) Cambian a la solución (47 %–62 %), luego el remate (59 %–79 %) */
+  --t: clamp(0, (var(--q) - 0.02 - var(--d, 0) * 0.7) / 0.18, 1);
+  --s: clamp(0, (var(--q) - 0.466 - var(--d, 0) * 0.3) / 0.1, 1);
   transform:
     translate(calc(var(--x, 0px) * (1 - var(--t))), calc(var(--y, 0px) * (1 - var(--t))))
     rotate(calc(var(--r, 0deg) * (1 - var(--t))))
@@ -416,25 +432,100 @@ p { text-wrap: pretty; }
   opacity: var(--s);
 }
 @media (min-width: 768px) { .motion .frag__clean { left: calc(18 * var(--u)); right: calc(18 * var(--u)); top: calc(18 * var(--u)); } }
-.frag__clean i { display: block; height: calc(8 * var(--u)); border-radius: calc(4 * var(--u)); background: var(--tint); }
-.frag__clean i:first-child { width: calc(28 * var(--u)); height: calc(28 * var(--u)); border-radius: calc(9 * var(--u)); background: var(--grad); }
-.frag__clean i:nth-child(2) { width: 80%; }
-.frag__clean i:nth-child(3) { width: 55%; }
+/* Estado resuelto: cada tarjeta muestra una mini interfaz ordenada
+   que responde a su caos (Excel → gráfica, chat → tablero, etc.) */
+.sys { gap: calc(6 * var(--u)); align-content: start; color: var(--text); }
+.sys b { font-weight: 600; }
+.sys em { font-style: normal; }
+.sys__pill {
+  display: inline-block; justify-self: start; white-space: nowrap;
+  padding: calc(2 * var(--u)) calc(8 * var(--u)); border-radius: 999px;
+  background: #D9FBE8; color: var(--green-text); font-weight: 600; font-size: .85em;
+}
+.sys__pill--soft { background: var(--tint); }
+.sys__head, .sys__row { display: flex; align-items: center; justify-content: space-between; gap: calc(8 * var(--u)); min-width: 0; }
+.sys__row b { white-space: nowrap; }
+
+/* Ventas: barras que crecen */
+.sys__bars { display: flex; align-items: flex-end; gap: calc(4 * var(--u)); height: calc(46 * var(--u)); }
+.sys__bars i {
+  flex: 1; height: calc(var(--h) * 100%); border-radius: calc(3 * var(--u)) calc(3 * var(--u)) calc(1 * var(--u)) calc(1 * var(--u));
+  background: var(--grad); transform-origin: bottom; transform: scaleY(var(--s, 1));
+}
+.sys__bars i:last-child { box-shadow: 0 0 0 calc(2 * var(--u)) rgba(0, 210, 111, .18); }
+
+/* Pedidos: tablero de 3 columnas */
+.sys--kanban { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(5 * var(--u)); }
+.sys__col { display: grid; gap: calc(4 * var(--u)); align-content: start; min-width: 0; }
+.sys__col em { font-size: .78em; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sys__col i {
+  font-style: normal; font-size: .85em; padding: calc(3 * var(--u)) calc(6 * var(--u)); border-radius: calc(6 * var(--u));
+  background: #EEF1EF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sys__col i.on { background: #D9FBE8; color: var(--green-text); font-weight: 600; box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(0, 163, 92, .35); }
+
+/* Inventario: nivel de existencias */
+.sys__level { flex: 1; height: calc(6 * var(--u)); border-radius: calc(3 * var(--u)); background: #EEF1EF; position: relative; overflow: hidden; }
+.sys__level::after { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(var(--v) * 100%); background: var(--grad); border-radius: inherit; transform-origin: left; transform: scaleX(var(--s, 1)); }
+.sys--stock em, .sys--agenda b { font-family: ui-monospace, monospace; }
+.sys--stock em { color: var(--green-text); font-weight: 600; min-width: 2ch; text-align: right; }
+
+/* Reportes: total calculado */
+.sys--total .sys__row b { font-size: .8em; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.sys__big { font-family: var(--f-display); font-weight: 600; font-size: 1.7em; letter-spacing: -0.03em; color: var(--green-text); line-height: 1; }
+
+/* Procesos: pasos con palomita */
+.sys__step { display: flex; align-items: center; gap: calc(7 * var(--u)); }
+.sys__step::before {
+  content: "✓"; flex: none; display: grid; place-items: center;
+  width: calc(15 * var(--u)); height: calc(15 * var(--u)); border-radius: 50%;
+  background: var(--grad); color: #fff; font-size: calc(9 * var(--u)); font-weight: 700;
+}
+
+/* Las piezas de cada mini interfaz entran una tras otra */
+.motion .sys > * {
+  --c: clamp(0, (var(--s) - var(--k, 0)) / 0.55, 1);
+  opacity: var(--c);
+  transform: translateY(calc((1 - var(--c)) * calc(6 * var(--u))));
+}
+.motion .sys > :nth-child(2) { --k: .2; }
+.motion .sys > :nth-child(3) { --k: .4; }
+
+/* Con animación, el nombre de la solución va sin prefijo */
+.motion .frag__after::before { content: none; }
+
+@media (max-width: 767px) {
+  .sys__more { display: none; }
+  .sys { gap: calc(4 * var(--u)); }
+  .sys__bars { height: calc(28 * var(--u)); gap: calc(3 * var(--u)); }
+  .sys--kanban { gap: calc(3 * var(--u)); }
+  .sys__col i { padding: calc(2 * var(--u)) calc(4 * var(--u)); }
+  .sys__big { font-size: 1.35em; }
+  .sys__pill { padding: calc(2 * var(--u)) calc(6 * var(--u)); font-size: .8em; }
+  .sys--agenda .sys__row { gap: calc(4 * var(--u)); }
+}
 .motion .frag__before { display: block; opacity: calc(1 - var(--s)); }
 .motion .frag__after {
   position: absolute; left: 0; right: 0; bottom: 0; margin: 0;
   font-size: 1em; opacity: var(--s);
 }
-.motion .frag__after::before { content: none; }
 
 .problem__caption {
   text-align: center; font-family: var(--f-display); font-weight: 600; letter-spacing: -0.03em;
-  font-size: clamp(1.5rem, 1rem + 2.4vw, 2.8rem);
 }
-.motion .problem__caption {
-  opacity: clamp(0, (var(--p) - 0.76) / 0.12, 1);
-  transform: translateY(calc((1 - clamp(0, (var(--p) - 0.76) / 0.12, 1)) * calc(24 * var(--u))));
+.problem__help {
+  display: block; font-size: var(--fs-lead); letter-spacing: -0.01em; color: var(--text-2);
+  margin-bottom: calc(6 * var(--u));
 }
+.problem__tagline { display: block; font-size: clamp(1.5rem, 1rem + 2.4vw, 2.8rem); line-height: 1.1; }
+/* Primero aparece la frase de ayuda y después el remate */
+.motion .problem__help, .motion .problem__tagline {
+  --c: clamp(0, (var(--q) - var(--at)) / 0.1, 1);
+  opacity: var(--c);
+  transform: translateY(calc((1 - var(--c)) * calc(20 * var(--u))));
+}
+.motion .problem__help { --at: 0.586; }
+.motion .problem__tagline { --at: 0.686; }
 
 /* =========================================================
    FRASE PUENTE — se enciende palabra por palabra
@@ -505,7 +596,10 @@ p { text-wrap: pretty; }
   content: ""; position: absolute; left: 0; top: calc(22 * var(--u)); bottom: calc(22 * var(--u)); width: calc(3 * var(--u)); border-radius: calc(3 * var(--u));
   background: var(--bright); transform: scaleY(0); transition: transform .5s var(--ease);
 }
-.svc__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(6 * var(--u)) calc(12 * var(--u)); }
+/* Número a la izquierda y nombre a la derecha, siempre alineados (aunque el
+   nombre ocupe dos renglones); la etiqueta "Gratis" va debajo del nombre */
+.svc__head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: calc(6 * var(--u)) calc(12 * var(--u)); }
+.svc__head .svc__tag { grid-column: 2; justify-self: start; }
 .svc__idx { font-family: ui-monospace, monospace; font-size: .8rem; color: var(--flash); opacity: .8; }
 .svc__name { font-size: var(--fs-h3); letter-spacing: -0.03em; }
 .svc__tag {
@@ -605,12 +699,6 @@ p { text-wrap: pretty; }
 }
 .proj__k { display: block; font-family: var(--f-display); font-size: .75rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--flash); }
 .proj__steps p { margin-top: calc(2 * var(--u)); color: var(--on-dark); }
-.proj__stack { display: flex; flex-wrap: wrap; gap: calc(6 * var(--u)); margin-top: calc(10 * var(--u)); }
-.proj__stack li {
-  padding: calc(3 * var(--u)) calc(9 * var(--u)); border-radius: calc(999 * var(--u));
-  font-family: ui-monospace, monospace; font-size: .72rem; color: var(--flash);
-  background: rgba(125, 255, 190, .08); box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(125, 255, 190, .22);
-}
 .motion .proj.is-open .proj__steps > li { animation: step-in .7s var(--ease) both; }
 .motion .proj.is-open .proj__steps > li:nth-child(2) { animation-delay: .08s; }
 .motion .proj.is-open .proj__steps > li:nth-child(3) { animation-delay: .16s; }
@@ -679,6 +767,10 @@ p { text-wrap: pretty; }
 }
 .step__num { font-family: ui-monospace, monospace; font-size: .8rem; color: var(--green-text); }
 .step h3 { font-size: var(--fs-h3); margin-top: calc(4 * var(--u)); }
+.step h3 { hyphens: auto; }
+/* Tablet (4 pasos en fila, columnas angostas): títulos más chicos para que
+   "acompañamiento" no se salga de su columna */
+@media (min-width: 768px) and (max-width: 1023px) { .step h3 { font-size: 1.15rem; } }
 .step p { margin-top: calc(8 * var(--u)); color: var(--text-2); max-width: 22rem; }
 
 html:not(.motion) .step__dot::after, .step.is-on .step__dot::after { transform: scale(1); }
@@ -747,7 +839,7 @@ html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 c
   .nav__logo img { height: calc(28 * var(--u)); }
 
   /* Hero: menos recorrido de scroll antes de la siguiente sección */
-  .motion .hero { height: 130svh; }
+  .motion .hero { height: 190svh; }
   .hero__title { font-size: clamp(2.5rem, 11.5vw, 3.4rem); }
   .hero__actions .btn--lg { width: 100%; }
   .hero__actions { justify-content: center; }
@@ -800,6 +892,9 @@ html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 c
   /* CTA final: datos en una fila compacta */
   .cta h2 { font-size: clamp(2.5rem, 12vw, 3.4rem); }
   .cta__actions .btn--lg { width: 100%; }
+  /* En celulares angostos (320 px) el texto del botón puede partirse en dos
+     renglones; sin esto, el botón ensanchaba su columna y cortaba el texto */
+  .btn--lg { white-space: normal; text-align: center; line-height: 1.2; padding-block: .7em; }
   .facts { grid-template-columns: repeat(3, 1fr); gap: calc(8 * var(--u)); margin-top: calc(56 * var(--u)); padding-top: calc(32 * var(--u)); }
   .facts dt { font-size: 2rem; }
   .facts dd { font-size: .8125rem; line-height: 1.35; }
