@@ -349,6 +349,9 @@ p { text-wrap: pretty; }
    EL PROBLEMA — los fragmentos se acomodan en un tablero
    ========================================================= */
 .problem { background: var(--white); }
+/* --q = progreso de la animación. Caída ágil (~0.75 pantallas), pausa con los
+   problemas, cambio a soluciones, remate y una pausa final antes de soltar. */
+.motion .problem { --q: min(1, calc(var(--p) / 0.98)); }
 /* Retícula de puntos en los costados: visible en los márgenes, se desvanece hacia el centro */
 .problem__stage { position: relative; isolation: isolate; }
 .problem__stage::before {
@@ -409,11 +412,11 @@ p { text-wrap: pretty; }
 
 /* Animación: del caos al tablero */
 .motion .frag {
-  /* 1) Caen y se acomodan (hasta ~45%)
-     2) Se quedan quietas mostrando el problema (45%–60%)
-     3) Cambian a la solución (60%–72%) */
-  --t: clamp(0, (var(--p) - 0.03 - var(--d, 0)) / 0.25, 1);
-  --s: clamp(0, (var(--p) - 0.6 - var(--d, 0) * 0.3) / 0.1, 1);
+  /* (en --q) 1) Caen y se acomodan (hasta ~33 %)
+     2) Se quedan quietas mostrando el problema (33 %–47 %)
+     3) Cambian a la solución (47 %–62 %), luego el remate (59 %–79 %) */
+  --t: clamp(0, (var(--q) - 0.02 - var(--d, 0) * 0.7) / 0.18, 1);
+  --s: clamp(0, (var(--q) - 0.466 - var(--d, 0) * 0.3) / 0.1, 1);
   transform:
     translate(calc(var(--x, 0px) * (1 - var(--t))), calc(var(--y, 0px) * (1 - var(--t))))
     rotate(calc(var(--r, 0deg) * (1 - var(--t))))
@@ -517,12 +520,12 @@ p { text-wrap: pretty; }
 .problem__tagline { display: block; font-size: clamp(1.5rem, 1rem + 2.4vw, 2.8rem); line-height: 1.1; }
 /* Primero aparece la frase de ayuda y después el remate */
 .motion .problem__help, .motion .problem__tagline {
-  --c: clamp(0, (var(--p) - var(--at)) / 0.1, 1);
+  --c: clamp(0, (var(--q) - var(--at)) / 0.1, 1);
   opacity: var(--c);
   transform: translateY(calc((1 - var(--c)) * calc(20 * var(--u))));
 }
-.motion .problem__help { --at: 0.72; }
-.motion .problem__tagline { --at: 0.82; }
+.motion .problem__help { --at: 0.586; }
+.motion .problem__tagline { --at: 0.686; }
 
 /* =========================================================
    FRASE PUENTE — se enciende palabra por palabra
