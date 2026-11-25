@@ -596,7 +596,10 @@ p { text-wrap: pretty; }
   content: ""; position: absolute; left: 0; top: calc(22 * var(--u)); bottom: calc(22 * var(--u)); width: calc(3 * var(--u)); border-radius: calc(3 * var(--u));
   background: var(--bright); transform: scaleY(0); transition: transform .5s var(--ease);
 }
-.svc__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(6 * var(--u)) calc(12 * var(--u)); }
+/* Número a la izquierda y nombre a la derecha, siempre alineados (aunque el
+   nombre ocupe dos renglones); la etiqueta "Gratis" va debajo del nombre */
+.svc__head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: calc(6 * var(--u)) calc(12 * var(--u)); }
+.svc__head .svc__tag { grid-column: 2; justify-self: start; }
 .svc__idx { font-family: ui-monospace, monospace; font-size: .8rem; color: var(--flash); opacity: .8; }
 .svc__name { font-size: var(--fs-h3); letter-spacing: -0.03em; }
 .svc__tag {
@@ -764,6 +767,10 @@ p { text-wrap: pretty; }
 }
 .step__num { font-family: ui-monospace, monospace; font-size: .8rem; color: var(--green-text); }
 .step h3 { font-size: var(--fs-h3); margin-top: calc(4 * var(--u)); }
+.step h3 { hyphens: auto; }
+/* Tablet (4 pasos en fila, columnas angostas): títulos más chicos para que
+   "acompañamiento" no se salga de su columna */
+@media (min-width: 768px) and (max-width: 1023px) { .step h3 { font-size: 1.15rem; } }
 .step p { margin-top: calc(8 * var(--u)); color: var(--text-2); max-width: 22rem; }
 
 html:not(.motion) .step__dot::after, .step.is-on .step__dot::after { transform: scale(1); }
@@ -885,6 +892,9 @@ html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 c
   /* CTA final: datos en una fila compacta */
   .cta h2 { font-size: clamp(2.5rem, 12vw, 3.4rem); }
   .cta__actions .btn--lg { width: 100%; }
+  /* En celulares angostos (320 px) el texto del botón puede partirse en dos
+     renglones; sin esto, el botón ensanchaba su columna y cortaba el texto */
+  .btn--lg { white-space: normal; text-align: center; line-height: 1.2; padding-block: .7em; }
   .facts { grid-template-columns: repeat(3, 1fr); gap: calc(8 * var(--u)); margin-top: calc(56 * var(--u)); padding-top: calc(32 * var(--u)); }
   .facts dt { font-size: 2rem; }
   .facts dd { font-size: .8125rem; line-height: 1.35; }
