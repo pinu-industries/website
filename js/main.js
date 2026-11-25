@@ -30,6 +30,13 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
   const MOTION = root.classList.contains('motion');
   const FINE_POINTER = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  // Ejecuta fn como máximo una vez por cuadro mientras se redimensiona la ventana
+  const onResize = (fn) => {
+    let id = 0;
+    window.addEventListener('resize', () => {
+      if (!id) id = requestAnimationFrame(() => { id = 0; fn(); });
+    });
+  };
 
   /* ---------- CTA ---------- */
   document.querySelectorAll('[data-cta]').forEach((a) => {
@@ -41,6 +48,17 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
       a.href = FALLBACK_MAIL;
     }
   });
+
+  /* ---------- Hero: si el canvas nunca arrancó (p. ej. hero.js no cargó),
+     se muestra el logo fijo en lugar de dejar el hueco vacío ---------- */
+  const heroEl = document.querySelector('.hero');
+  if (MOTION && heroEl) {
+    window.addEventListener('load', () => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (!heroEl.classList.contains('hero--canvas')) heroEl.classList.add('hero--fallback');
+      }));
+    });
+  }
 
   /* ---------- Header ---------- */
   const nav = document.querySelector('[data-nav]');
@@ -64,6 +82,7 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
 
   let navScrolled = null;
   function updateNav() {
+    if (!nav) return;
     const s = window.scrollY > 8;
     if (s !== navScrolled) { nav.classList.toggle('is-scrolled', s); navScrolled = s; }
   }
@@ -110,16 +129,24 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
   function checkPinned() {
     scenes.forEach((s) => {
       const child = s.el.querySelector(':scope > .scene__sticky');
+      s.sticky = child;
       s.pinned = !!child && getComputedStyle(child).position === 'sticky';
     });
   }
   checkPinned();
-  window.addEventListener('resize', checkPinned);
+  onResize(checkPinned);
 
   function measure(s) {
     const r = s.el.getBoundingClientRect();
+    if (s.pinned) {
+      // El escenario fijo mide 100svh; en celular innerHeight cambia con la barra
+      // del navegador, así que se usa la altura real del escenario.
+      const span = r.height - s.sticky.clientHeight;
+      if (span <= 0) return r.top <= 0 ? 1 : 0;
+      return clamp(-r.top / span);
+    }
     const vh = window.innerHeight;
-    if (s.pinned) return clamp(-r.top / (r.height - vh));
+    if (r.height <= 0) return 0;
     return clamp((vh * 0.85 - r.top) / (r.height * 0.85));
   }
 
@@ -135,25 +162,33 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
       const d = s.target - s.p;
       s.p = Math.abs(d) < 0.0005 ? s.target : s.p + d * 0.16;
       if (s.p !== s.target) again = true;
-      s.el.style.setProperty('--p', s.p.toFixed(4));
-      for (const h of s.hooks) h(s.p, s);
+      apply(s);
     }
     if (again) kick();
   }
   function kick() { if (!raf) raf = requestAnimationFrame(tick); }
+  function apply(s) {
+    s.el.style.setProperty('--p', s.p.toFixed(4));
+    for (const h of s.hooks) h(s.p, s);
+  }
 
   if (MOTION) {
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {
         const s = sceneOf(e.target);
-        if (s) s.visible = e.isIntersecting;
+        if (!s) continue;
+        if (e.isIntersecting && !s.visible) {
+          s.p = s.target = measure(s);
+          apply(s);
+        }
+        s.visible = e.isIntersecting;
       }
       kick();
     }, { rootMargin: '15% 0px' });
     scenes.forEach((s) => io.observe(s.el));
   }
   window.addEventListener('scroll', kick, { passive: true });
-  window.addEventListener('resize', kick);
+  onResize(kick);
   kick();
 
   /* ---------- Proceso: línea SVG que se dibuja con el scroll ---------- */
@@ -220,7 +255,7 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
     const s = sceneOf(proc);
     if (s) s.hooks.push(drawLine);
     layoutLine();
-    window.addEventListener('resize', layoutLine);
+    onResize(layoutLine);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutLine);
   }
 
@@ -299,29 +334,52 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
   const compileEls = document.querySelectorAll('[data-compile]');
   if (compileEls.length && MOTION) {
     const GLYPHS = '01{}[]<>/=+*#$%&';
-    const run = (el) => {
+    const SCRAMBLE = 60;   // cada cuánto cambian los caracteres aleatorios (ms)
+    const SETTLE = 400;    // al final, los caracteres se fijan de izquierda a derecha en este tiempo
+
+    // Cambia caracteres al azar y se detiene a los `end` ms
+    const run = (el, end = 900) => {
       const final = el.dataset.compile;
-      const dur = 900;
       const t0 = performance.now();
+      let last = -Infinity;
       const step = (now) => {
-        const k = clamp((now - t0) / dur);
+        const t = now - t0;
+        if (t < end && now - last < SCRAMBLE) { requestAnimationFrame(step); return; }
+        last = now;
+        const k = clamp((t - (end - SETTLE)) / SETTLE);
         const fixed = Math.floor(final.length * k);
         let out = final.slice(0, fixed);
         for (let i = fixed; i < final.length; i++) {
           out += final[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
         }
         el.textContent = out;
-        if (k < 1) requestAnimationFrame(step);
+        if (t < end) requestAnimationFrame(step);
         else el.textContent = final;
       };
       requestAnimationFrame(step);
     };
+
+    // Grupos (las cifras del CTA): todas cambian a la vez y se van
+    // deteniendo de izquierda a derecha.
+    const FIRST = 1100;    // cuándo se detiene la primera
+    const STAGGER = 650;   // tiempo entre una y la siguiente
+    document.querySelectorAll('[data-compile-group]').forEach((group) => {
+      const els = [...group.querySelectorAll('[data-compile]')];
+      const gio = new IntersectionObserver((entries) => {
+        if (!entries[0].isIntersecting) return;
+        gio.disconnect();
+        els.forEach((el, i) => run(el, FIRST + i * STAGGER));
+      }, { threshold: 0.5 });
+      gio.observe(group);
+    });
+
+    // Textos sueltos: se compilan al aparecer
     const cio = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) { run(e.target); cio.unobserve(e.target); }
       });
     }, { threshold: 0.6 });
-    compileEls.forEach((el) => cio.observe(el));
+    compileEls.forEach((el) => { if (!el.closest('[data-compile-group]')) cio.observe(el); });
   }
 
   /* ---------- Aparición suave de bloques ---------- */
