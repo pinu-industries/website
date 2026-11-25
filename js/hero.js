@@ -72,6 +72,10 @@
     // Punto de origen para el zoom al hacer scroll y para el brillo
     hero.style.setProperty('--ox', ((ox + bw / 2) / cr.width * 100).toFixed(2) + '%');
     hero.style.setProperty('--oy', ((oy + bh / 2) / cr.height * 100).toFixed(2) + '%');
+    // Centro de la π respecto al escenario (para el brillo, que vive dentro del escenario)
+    var sr = stage.getBoundingClientRect();
+    hero.style.setProperty('--mx', (mr.left + bw / 2 - sr.left).toFixed(1) + 'px');
+    hero.style.setProperty('--my', (mr.top + bh / 2 - sr.top).toFixed(1) + 'px');
 
     var off = document.createElement('canvas');
     var ow = Math.max(1, Math.round(bw)), oh = Math.max(1, Math.round(bh));

@@ -262,7 +262,7 @@ p { text-wrap: pretty; }
   background: radial-gradient(120% 80% at 70% 30%, #003A24 0%, var(--deep-2) 60%) var(--deep-2);
   color: var(--on-dark);
 }
-.motion .hero { height: 160svh; }
+.motion .hero { height: 220svh; }
 .hero__stage {
   min-height: 100svh;
   display: grid;
@@ -279,12 +279,22 @@ p { text-wrap: pretty; }
   translate: -50% 0;
   transform-origin: var(--ox, 50%) var(--oy, 35%);
 }
+/* Al bajar: el texto se va, la π viaja al centro de la pantalla y se atenúa
+   (sin desaparecer, para que nunca quede la pantalla verde vacía) */
+/* 1) el texto se va (0–40 %)  2) la π viaja al centro (30–85 %) */
+.motion .hero { --m: clamp(0, (var(--p) - 0.3) / 0.55, 1); }
+.motion .hero__glow {
+  left: calc(var(--mx, 50%) + (50% - var(--mx, 50%)) * var(--m));
+  top: calc(var(--my, 35%) + (50% - var(--my, 35%)) * var(--m));
+}
 .motion .hero__canvas {
-  transform: scale(calc(1 + var(--p) * 0.9));
-  opacity: calc(1 - var(--p) * 1.6);
+  transform:
+    translate(calc((50% - var(--ox, 50%)) * var(--m)), calc((50% - var(--oy, 35%)) * var(--m)))
+    scale(calc(1 + var(--p) * 0.3));
+  opacity: calc(1 - var(--p) * 0.6);
 }
 .hero__glow {
-  position: absolute; width: 70vmax; height: 70vmax; left: var(--ox, 50%); top: var(--oy, 35%);
+  position: absolute; width: 70vmax; height: 70vmax; left: var(--mx, 50%); top: var(--my, 35%);
   translate: -50% -50%;
   background: radial-gradient(closest-side, rgba(0, 210, 111, .16), transparent);
   pointer-events: none;
@@ -304,7 +314,7 @@ p { text-wrap: pretty; }
 .hero__copy { grid-row: 2; position: relative; max-width: 40rem; }
 .motion .hero__copy {
   transform: translateY(calc(var(--p) * -14vh));
-  opacity: calc(1 - var(--p) * 2.2);
+  opacity: calc(1 - var(--p) * 2.5);
 }
 .hero__title { font-size: var(--fs-hero); font-weight: 600; letter-spacing: -0.045em; line-height: .98; margin-top: calc(14 * var(--u)); }
 .hero__lead { margin-top: calc(18 * var(--u)); font-size: var(--fs-lead); color: var(--on-dark-2); max-width: 32rem; }
@@ -825,7 +835,7 @@ html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 c
   .nav__logo img { height: calc(28 * var(--u)); }
 
   /* Hero: menos recorrido de scroll antes de la siguiente sección */
-  .motion .hero { height: 130svh; }
+  .motion .hero { height: 190svh; }
   .hero__title { font-size: clamp(2.5rem, 11.5vw, 3.4rem); }
   .hero__actions .btn--lg { width: 100%; }
   .hero__actions { justify-content: center; }
