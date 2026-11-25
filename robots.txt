@@ -1,0 +1,5 @@
+# Pinu Industries: todo el sitio puede indexarse.
+User-agent: *
+Allow: /
+
+Sitemap: https://pinuindustries.com/sitemap.xml
