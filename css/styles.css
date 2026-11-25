@@ -419,24 +419,83 @@ p { text-wrap: pretty; }
   opacity: var(--s);
 }
 @media (min-width: 768px) { .motion .frag__clean { left: calc(18 * var(--u)); right: calc(18 * var(--u)); top: calc(18 * var(--u)); } }
-/* Estado resuelto: palomita verde que se dibuja al acomodarse (sin barras que parezcan "cargando") */
-.frag__clean svg {
-  width: calc(38 * var(--u)); height: calc(38 * var(--u)); padding: calc(8 * var(--u));
-  border-radius: 50%; background: var(--grad);
-  box-shadow: 0 calc(6 * var(--u)) calc(16 * var(--u)) rgba(0, 163, 92, .28);
-  transform: scale(calc(0.6 + 0.4 * var(--s, 1)));
+/* Estado resuelto: cada tarjeta muestra una mini interfaz ordenada
+   que responde a su caos (Excel → gráfica, chat → tablero, etc.) */
+.sys { gap: calc(6 * var(--u)); align-content: start; color: var(--text); }
+.sys b { font-weight: 600; }
+.sys em { font-style: normal; }
+.sys__pill {
+  display: inline-block; justify-self: start; white-space: nowrap;
+  padding: calc(2 * var(--u)) calc(8 * var(--u)); border-radius: 999px;
+  background: #D9FBE8; color: var(--green-text); font-weight: 600; font-size: .85em;
 }
-.frag__clean path {
-  fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
-  stroke-dasharray: 20; stroke-dashoffset: calc(20 * (1 - clamp(0, (var(--s, 1) - 0.35) / 0.65, 1)));
+.sys__pill--soft { background: var(--tint); }
+.sys__head, .sys__row { display: flex; align-items: center; justify-content: space-between; gap: calc(8 * var(--u)); min-width: 0; }
+.sys__row b { white-space: nowrap; }
+
+/* Ventas: barras que crecen */
+.sys__bars { display: flex; align-items: flex-end; gap: calc(4 * var(--u)); height: calc(46 * var(--u)); }
+.sys__bars i {
+  flex: 1; height: calc(var(--h) * 100%); border-radius: calc(3 * var(--u)) calc(3 * var(--u)) calc(1 * var(--u)) calc(1 * var(--u));
+  background: var(--grad); transform-origin: bottom; transform: scaleY(var(--s, 1));
 }
-@media (min-width: 768px) { .frag__clean svg { width: calc(44 * var(--u)); height: calc(44 * var(--u)); padding: calc(10 * var(--u)); } }
+.sys__bars i:last-child { box-shadow: 0 0 0 calc(2 * var(--u)) rgba(0, 210, 111, .18); }
+
+/* Pedidos: tablero de 3 columnas */
+.sys--kanban { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(5 * var(--u)); }
+.sys__col { display: grid; gap: calc(4 * var(--u)); align-content: start; min-width: 0; }
+.sys__col em { font-size: .78em; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sys__col i {
+  font-style: normal; font-size: .85em; padding: calc(3 * var(--u)) calc(6 * var(--u)); border-radius: calc(6 * var(--u));
+  background: #EEF1EF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sys__col i.on { background: #D9FBE8; color: var(--green-text); font-weight: 600; box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(0, 163, 92, .35); }
+
+/* Inventario: nivel de existencias */
+.sys__level { flex: 1; height: calc(6 * var(--u)); border-radius: calc(3 * var(--u)); background: #EEF1EF; position: relative; overflow: hidden; }
+.sys__level::after { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(var(--v) * 100%); background: var(--grad); border-radius: inherit; transform-origin: left; transform: scaleX(var(--s, 1)); }
+.sys--stock em, .sys--agenda b { font-family: ui-monospace, monospace; }
+.sys--stock em { color: var(--green-text); font-weight: 600; min-width: 2ch; text-align: right; }
+
+/* Reportes: total calculado */
+.sys--total .sys__row b { font-size: .8em; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.sys__big { font-family: var(--f-display); font-weight: 600; font-size: 1.7em; letter-spacing: -0.03em; color: var(--green-text); line-height: 1; }
+
+/* Procesos: pasos con palomita */
+.sys__step { display: flex; align-items: center; gap: calc(7 * var(--u)); }
+.sys__step::before {
+  content: "✓"; flex: none; display: grid; place-items: center;
+  width: calc(15 * var(--u)); height: calc(15 * var(--u)); border-radius: 50%;
+  background: var(--grad); color: #fff; font-size: calc(9 * var(--u)); font-weight: 700;
+}
+
+/* Las piezas de cada mini interfaz entran una tras otra */
+.motion .sys > * {
+  --c: clamp(0, (var(--s) - var(--k, 0)) / 0.55, 1);
+  opacity: var(--c);
+  transform: translateY(calc((1 - var(--c)) * calc(6 * var(--u))));
+}
+.motion .sys > :nth-child(2) { --k: .2; }
+.motion .sys > :nth-child(3) { --k: .4; }
+
+/* Con animación, el nombre de la solución va sin prefijo */
+.motion .frag__after::before { content: none; }
+
+@media (max-width: 767px) {
+  .sys__more { display: none; }
+  .sys { gap: calc(4 * var(--u)); }
+  .sys__bars { height: calc(28 * var(--u)); gap: calc(3 * var(--u)); }
+  .sys--kanban { gap: calc(3 * var(--u)); }
+  .sys__col i { padding: calc(2 * var(--u)) calc(4 * var(--u)); }
+  .sys__big { font-size: 1.35em; }
+  .sys__pill { padding: calc(2 * var(--u)) calc(6 * var(--u)); font-size: .8em; }
+  .sys--agenda .sys__row { gap: calc(4 * var(--u)); }
+}
 .motion .frag__before { display: block; opacity: calc(1 - var(--s)); }
 .motion .frag__after {
   position: absolute; left: 0; right: 0; bottom: 0; margin: 0;
   font-size: 1em; opacity: var(--s);
 }
-.motion .frag__after::before { content: none; }
 
 .problem__caption {
   text-align: center; font-family: var(--f-display); font-weight: 600; letter-spacing: -0.03em;
