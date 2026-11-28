@@ -384,7 +384,8 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
 
   /* ---------- Aparición suave de bloques ---------- */
   const reveals = document.querySelectorAll('[data-reveal]');
-  if (reveals.length && MOTION) {
+  if (reveals.length && MOTION && 'IntersectionObserver' in window) {
+    root.classList.add('reveal-ready');
     const rio = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) { e.target.classList.add('is-in'); rio.unobserve(e.target); }

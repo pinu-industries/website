@@ -551,8 +551,10 @@ p { text-wrap: pretty; }
 }
 
 /* Aparición suave */
-.motion [data-reveal] { opacity: 0; transform: translateY(calc(32 * var(--u))); transition: opacity 1s var(--ease), transform 1.2s var(--ease); }
-.motion [data-reveal].is-in { opacity: 1; transform: none; }
+/* Solo se ocultan cuando main.js ya está listo para mostrarlos (añade .reveal-ready).
+   Si el script no carga, el contenido queda visible. */
+.reveal-ready [data-reveal] { opacity: 0; transform: translateY(calc(32 * var(--u))); transition: opacity 1s var(--ease), transform 1.2s var(--ease); }
+.reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
 
 /* =========================================================
    SERVICIOS — configurador
