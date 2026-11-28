@@ -90,6 +90,9 @@ body {
   overflow-x: clip;
 }
 img, svg, canvas { display: block; max-width: 100%; }
+/* Selección de texto con los colores de la marca (claro y oscuro) */
+::selection { background: var(--flash); color: var(--deep); }
+:is(.hero, .on-dark, .cta, .footer, .proj) ::selection { background: var(--bright); color: var(--deep-2); }
 h1, h2, h3, h4, p { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 a { color: inherit; }
