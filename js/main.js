@@ -321,12 +321,7 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
         proj.addEventListener('mouseenter', () => projects.forEach((p) => setOpen(p, p === proj)));
       }
     });
-    const list = projects[0].parentElement;
-    if (FINE_POINTER) {
-      list.addEventListener('mouseleave', () => {
-        if (!list.contains(document.activeElement)) projects.forEach((p, i) => setOpen(p, i === 0));
-      });
-    }
+    // Al salir del área, se queda abierta la última tarjeta que se vio
     setOpen(projects[0], true);
   }
 
