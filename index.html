@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap">
-  <link rel="stylesheet" href="css/styles.css?v=35">
+  <link rel="stylesheet" href="css/styles.css?v=53">
 
   <script>
     // Activa animaciones solo si hay JS y el usuario no pidió reducir movimiento.
@@ -454,8 +454,105 @@
     </div>
   </footer>
 
-  <script src="js/pi-path.js?v=35" defer></script>
-  <script src="js/hero.js?v=35" defer></script>
-  <script src="js/main.js?v=35" defer></script>
+  <!-- Ventana para agendar el diagnóstico. Se abre desde cualquier botón [data-cta]. -->
+  <dialog class="booking" id="cita" aria-labelledby="cita-title" aria-describedby="cita-lead">
+    <button class="booking__close" type="button" data-close aria-label="Cerrar"><span aria-hidden="true"></span></button>
+
+    <aside class="booking__side">
+      <img class="booking__mark" src="assets/logos/pinu-isotipo-blanco.svg" alt="" width="795" height="622" aria-hidden="true">
+      <p class="booking__kicker">Diagnóstico gratuito</p>
+      <h2 class="booking__title" id="cita-title">Agenda tu diagnóstico</h2>
+      <p class="booking__lead" id="cita-lead">Platicamos de tu negocio y te decimos qué conviene hacer. Sin costo y sin compromiso.</p>
+      <dl class="booking__summary" aria-live="polite">
+        <div><dt>Día</dt><dd data-sum-date>Elige un día</dd></div>
+        <div><dt>Hora</dt><dd data-sum-time>Elige una hora</dd></div>
+      </dl>
+      <ol class="booking__steps">
+        <li data-step-dot="1" aria-current="step"><span>1</span>Día y hora</li>
+        <li data-step-dot="2"><span>2</span>Tus datos</li>
+      </ol>
+    </aside>
+
+    <div class="booking__main">
+      <form class="booking__form" data-booking-form novalidate>
+        <!-- Paso 1: día y hora -->
+        <section class="booking__step" data-step="1" aria-labelledby="cita-dia-title">
+          <div class="cal" data-cal>
+            <div class="cal__head">
+              <h3 class="cal__title" id="cita-dia-title">Elige un día</h3>
+              <div class="cal__nav">
+                <button class="cal__arrow" type="button" data-cal-prev aria-label="Mes anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+                <p class="cal__month" data-cal-month aria-live="polite"></p>
+                <button class="cal__arrow" type="button" data-cal-next aria-label="Mes siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+              </div>
+            </div>
+            <div class="cal__week" aria-hidden="true"><span>D</span><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span></div>
+            <div class="cal__grid" data-cal-grid role="group" aria-labelledby="cita-dia-title"></div>
+          </div>
+
+          <fieldset class="times" data-times disabled>
+            <legend class="times__title">Elige una hora <span class="times__tz">· hora del centro de México</span></legend>
+            <div class="times__grid" data-times-grid></div>
+          </fieldset>
+
+          <p class="booking__err" data-step1-err role="alert" hidden></p>
+          <div class="booking__actions">
+            <button class="btn btn--primary btn--lg" type="button" data-next><span>Continuar</span></button>
+          </div>
+        </section>
+
+        <!-- Paso 2: datos -->
+        <section class="booking__step" data-step="2" aria-labelledby="cita-datos-title" hidden>
+          <button class="booking__back" type="button" data-back><span aria-hidden="true">←</span> Cambiar día u hora</button>
+          <h3 class="booking__h3" id="cita-datos-title" tabindex="-1">¿Con quién platicamos?</h3>
+          <div class="field">
+            <label for="cita-nombre">Nombre</label>
+            <input id="cita-nombre" name="nombre" type="text" autocomplete="name" required maxlength="80" aria-describedby="cita-nombre-err">
+            <p class="field__err" id="cita-nombre-err" hidden></p>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="cita-correo">Correo</label>
+              <input id="cita-correo" name="correo" type="email" autocomplete="email" inputmode="email" required maxlength="120" aria-describedby="cita-correo-err">
+              <p class="field__err" id="cita-correo-err" hidden></p>
+            </div>
+            <div class="field">
+              <label for="cita-whatsapp">WhatsApp <span class="field__opt">(opcional)</span></label>
+              <input id="cita-whatsapp" name="whatsapp" type="tel" autocomplete="tel" inputmode="tel" maxlength="20">
+            </div>
+          </div>
+          <div class="field">
+            <label for="cita-negocio">Negocio o giro <span class="field__opt">(opcional)</span></label>
+            <input id="cita-negocio" name="negocio" type="text" autocomplete="organization" maxlength="100">
+          </div>
+          <div class="field">
+            <label for="cita-mensaje">¿Qué te gustaría resolver?</label>
+            <textarea id="cita-mensaje" name="mensaje" rows="3" required maxlength="1200" aria-describedby="cita-mensaje-err"></textarea>
+            <p class="field__err" id="cita-mensaje-err" hidden></p>
+          </div>
+          <!-- Trampa para robots: las personas no la ven ni la llenan -->
+          <input class="booking__trap" type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+          <p class="booking__status" data-status role="status" aria-live="polite"></p>
+          <div class="booking__actions">
+            <button class="btn btn--primary btn--lg" type="submit" data-submit><span>Solicitar mi cita</span></button>
+            <p class="booking__note">Te confirmamos por correo. Solo usamos tus datos para contactarte.</p>
+          </div>
+        </section>
+      </form>
+
+      <div class="booking__done" data-view="done" hidden>
+        <div class="booking__check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4L18 8"/></svg></div>
+        <h3 class="booking__h3" tabindex="-1" data-done-title>¡Listo!</h3>
+        <p class="booking__done-text" data-done-text>Recibimos tu solicitud.</p>
+        <p class="booking__ticket" data-done-when></p>
+        <button class="btn btn--primary btn--lg" type="button" data-close><span>Cerrar</span></button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/pi-path.js?v=53" defer></script>
+  <script src="js/hero.js?v=53" defer></script>
+  <script src="js/main.js?v=53" defer></script>
 </body>
 </html>
