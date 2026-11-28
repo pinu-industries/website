@@ -161,8 +161,10 @@ p { text-wrap: pretty; }
   font-family: var(--f-display); font-weight: 600; font-size: 1rem; letter-spacing: -0.01em;
   text-decoration: none; white-space: nowrap; cursor: pointer;
   transform: translate(var(--bx), var(--by));
-  transition: transform .5s var(--ease), background-color .25s, box-shadow .3s, color .2s;
+  transition: transform .5s var(--ease), background-color .25s, box-shadow .3s, color .2s, scale .12s var(--ease);
 }
+/* Estado presionado: en celular no existe el hover, así que se confirma el toque */
+.btn:active { scale: .97; }
 .btn span { display: inline-block; transform: translate(calc(var(--bx) * .35), calc(var(--by) * .35)); transition: transform .5s var(--ease); }
 .btn .hide-sm { display: inline; transform: none; }
 .btn--primary { background: var(--green-text); color: var(--white); }
@@ -572,9 +574,10 @@ p { text-wrap: pretty; }
   font-size: .95rem; font-weight: 500; line-height: 1.3;
   color: var(--on-dark); background: rgba(255, 255, 255, .06);
   box-shadow: inset 0 0 0 calc(1 * var(--u)) var(--line-dark);
-  transition: background-color .25s, box-shadow .25s, color .25s, transform .4s var(--ease);
+  transition: background-color .25s, box-shadow .25s, color .25s, transform .4s var(--ease), scale .12s var(--ease);
 }
 .chip:hover span { background: rgba(255, 255, 255, .11); }
+.chip:active span { scale: .96; }
 .chip input:checked + span {
   background: var(--bright); color: var(--deep-2);
   box-shadow: 0 0 0 calc(4 * var(--u)) rgba(0, 210, 111, .2);
