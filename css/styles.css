@@ -90,6 +90,9 @@ body {
   overflow-x: clip;
 }
 img, svg, canvas { display: block; max-width: 100%; }
+/* Selección de texto con los colores de la marca (claro y oscuro) */
+::selection { background: var(--flash); color: var(--deep); }
+:is(.hero, .on-dark, .cta, .footer, .proj) ::selection { background: var(--bright); color: var(--deep-2); }
 h1, h2, h3, h4, p { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 a { color: inherit; }
@@ -161,8 +164,10 @@ p { text-wrap: pretty; }
   font-family: var(--f-display); font-weight: 600; font-size: 1rem; letter-spacing: -0.01em;
   text-decoration: none; white-space: nowrap; cursor: pointer;
   transform: translate(var(--bx), var(--by));
-  transition: transform .5s var(--ease), background-color .25s, box-shadow .3s, color .2s;
+  transition: transform .5s var(--ease), background-color .25s, box-shadow .3s, color .2s, scale .12s var(--ease);
 }
+/* Estado presionado: en celular no existe el hover, así que se confirma el toque */
+.btn:active { scale: .97; }
 .btn span { display: inline-block; transform: translate(calc(var(--bx) * .35), calc(var(--by) * .35)); transition: transform .5s var(--ease); }
 .btn .hide-sm { display: inline; transform: none; }
 .btn--primary { background: var(--green-text); color: var(--white); }
@@ -335,7 +340,7 @@ p { text-wrap: pretty; }
 
 @media (min-width: 900px) {
   .hero__stage {
-    grid-template-columns: 1.05fr .95fr; grid-template-rows: 1fr;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); grid-template-rows: 1fr;
     align-items: center; column-gap: calc(40 * var(--u));
     max-width: calc(var(--wrap) + var(--gutter) * 2); margin-inline: auto;
     padding-bottom: calc(40 * var(--u));
@@ -546,8 +551,10 @@ p { text-wrap: pretty; }
 }
 
 /* Aparición suave */
-.motion [data-reveal] { opacity: 0; transform: translateY(calc(32 * var(--u))); transition: opacity 1s var(--ease), transform 1.2s var(--ease); }
-.motion [data-reveal].is-in { opacity: 1; transform: none; }
+/* Solo se ocultan cuando main.js ya está listo para mostrarlos (añade .reveal-ready).
+   Si el script no carga, el contenido queda visible. */
+.reveal-ready [data-reveal] { opacity: 0; transform: translateY(calc(32 * var(--u))); transition: opacity 1s var(--ease), transform 1.2s var(--ease); }
+.reveal-ready [data-reveal].is-in { opacity: 1; transform: none; }
 
 /* =========================================================
    SERVICIOS — configurador
@@ -572,9 +579,10 @@ p { text-wrap: pretty; }
   font-size: .95rem; font-weight: 500; line-height: 1.3;
   color: var(--on-dark); background: rgba(255, 255, 255, .06);
   box-shadow: inset 0 0 0 calc(1 * var(--u)) var(--line-dark);
-  transition: background-color .25s, box-shadow .25s, color .25s, transform .4s var(--ease);
+  transition: background-color .25s, box-shadow .25s, color .25s, transform .4s var(--ease), scale .12s var(--ease);
 }
 .chip:hover span { background: rgba(255, 255, 255, .11); }
+.chip:active span { scale: .96; }
 .chip input:checked + span {
   background: var(--bright); color: var(--deep-2);
   box-shadow: 0 0 0 calc(4 * var(--u)) rgba(0, 210, 111, .2);
@@ -712,6 +720,11 @@ p { text-wrap: pretty; }
     transition: flex-grow .8s var(--ease);
   }
   .proj.is-open { flex-grow: 2.4; }
+  /* En computadora las tarjetas se abren al pasar el mouse o con un clic y
+     siempre hay una abierta: el ícono +/× no aporta, así que no se muestra.
+     En celular se conserva porque ahí sí abre y cierra. */
+  .proj__plus { display: none; }
+  .proj.is-open .proj__toggle { cursor: default; }
   .proj__toggle { row-gap: calc(10 * var(--u)); padding-top: calc(12 * var(--u)); }
   .proj__name { margin-top: calc(12 * var(--u)); font-size: clamp(1.5rem, 1rem + 1.1vw, 2.2rem); }
   .proj__body { margin-top: auto; padding-top: calc(20 * var(--u)); }
@@ -775,7 +788,10 @@ p { text-wrap: pretty; }
 
 html:not(.motion) .step__dot::after, .step.is-on .step__dot::after { transform: scale(1); }
 html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 calc(2 * var(--u)) var(--pinu), 0 0 0 calc(6 * var(--u)) rgba(0, 163, 92, .15); }
-.motion .step h3, .motion .step p, .motion .step__num { opacity: .35; transition: opacity .5s; }
+/* Pasos aún no alcanzados: atenuados pero legibles (WCAG AA sobre el tinte):
+   título al 60 % = 4.6:1, número y descripción al 87 % = 4.5:1 o más */
+.motion .step h3 { opacity: .6; transition: opacity .5s; }
+.motion .step p, .motion .step__num { opacity: .87; transition: opacity .5s; }
 .motion .step.is-on h3, .motion .step.is-on p, .motion .step.is-on .step__num { opacity: 1; }
 
 @media (min-width: 768px) {
@@ -824,8 +840,22 @@ html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 c
 .footer__list { display: grid; gap: calc(8 * var(--u)); }
 .footer__copy { font-size: .8125rem; color: rgba(255,255,255,.5); }
 @media (min-width: 768px) {
-  .footer__inner { grid-template-columns: auto 1fr auto; align-items: center; gap: calc(40 * var(--u)); }
+  .footer__inner { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: calc(40 * var(--u)); }
   .footer__list { display: flex; flex-wrap: wrap; gap: calc(8 * var(--u)) calc(28 * var(--u)); justify-content: center; }
+}
+
+/* Reducir movimiento: sin desplazamientos ni cambios de tamaño animados.
+   Se conservan los cambios de color y el estado presionado como confirmación. */
+@media (prefers-reduced-motion: reduce) {
+  .proj { transition: none; }
+  .svc::before, .step__dot::after { transition: opacity .2s; }
+  .proj__plus { transition: background-color .3s; }
+  .chip span { transition: background-color .25s, box-shadow .25s, color .25s, scale .12s; }
+  .step__dot { transition: background-color .4s, box-shadow .4s; }
+  .btn { transition: background-color .25s, box-shadow .3s, color .2s, scale .12s; }
+  .btn span, .skip-link, .nav__toggle-bars, .nav__toggle-bars::before { transition: none; }
+  .nav__links { transition: opacity .2s, visibility 0s .2s; }
+}
 }
 
 /* =========================================================
