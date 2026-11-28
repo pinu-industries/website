@@ -839,6 +839,20 @@ html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 c
   .footer__list { display: flex; flex-wrap: wrap; gap: calc(8 * var(--u)) calc(28 * var(--u)); justify-content: center; }
 }
 
+/* Reducir movimiento: sin desplazamientos ni cambios de tamaño animados.
+   Se conservan los cambios de color y el estado presionado como confirmación. */
+@media (prefers-reduced-motion: reduce) {
+  .proj { transition: none; }
+  .svc::before, .step__dot::after { transition: opacity .2s; }
+  .proj__plus { transition: background-color .3s; }
+  .chip span { transition: background-color .25s, box-shadow .25s, color .25s, scale .12s; }
+  .step__dot { transition: background-color .4s, box-shadow .4s; }
+  .btn { transition: background-color .25s, box-shadow .3s, color .2s, scale .12s; }
+  .btn span, .skip-link, .nav__toggle-bars, .nav__toggle-bars::before { transition: none; }
+  .nav__links { transition: opacity .2s, visibility 0s .2s; }
+}
+}
+
 /* =========================================================
    AJUSTES SOLO PARA CELULAR (< 768 px)
    No afectan la vista de computadora.
