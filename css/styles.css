@@ -720,6 +720,12 @@ p { text-wrap: pretty; }
     transition: flex-grow .8s var(--ease);
   }
   .proj.is-open { flex-grow: 2.4; }
+  /* En computadora la tarjeta abierta no se cierra (siempre hay una abierta),
+     así que no muestra la ×; las cerradas conservan el + para invitar a abrirlas.
+     visibility mantiene su espacio para que el título no se mueva. */
+  .proj__plus { transition: transform .5s var(--ease), background-color .3s, opacity .3s, visibility 0s; }
+  .proj.is-open .proj__plus { opacity: 0; visibility: hidden; transition: transform .5s var(--ease), background-color .3s, opacity .2s, visibility 0s .2s; }
+  .proj.is-open .proj__toggle { cursor: default; }
   .proj__toggle { row-gap: calc(10 * var(--u)); padding-top: calc(12 * var(--u)); }
   .proj__name { margin-top: calc(12 * var(--u)); font-size: clamp(1.5rem, 1rem + 1.1vw, 2.2rem); }
   .proj__body { margin-top: auto; padding-top: calc(20 * var(--u)); }
