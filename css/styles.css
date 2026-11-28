@@ -783,7 +783,10 @@ p { text-wrap: pretty; }
 
 html:not(.motion) .step__dot::after, .step.is-on .step__dot::after { transform: scale(1); }
 html:not(.motion) .step__dot, .step.is-on .step__dot { box-shadow: inset 0 0 0 calc(2 * var(--u)) var(--pinu), 0 0 0 calc(6 * var(--u)) rgba(0, 163, 92, .15); }
-.motion .step h3, .motion .step p, .motion .step__num { opacity: .35; transition: opacity .5s; }
+/* Pasos aún no alcanzados: atenuados pero legibles (WCAG AA sobre el tinte):
+   título al 60 % = 4.6:1, número y descripción al 87 % = 4.5:1 o más */
+.motion .step h3 { opacity: .6; transition: opacity .5s; }
+.motion .step p, .motion .step__num { opacity: .87; transition: opacity .5s; }
 .motion .step.is-on h3, .motion .step.is-on p, .motion .step.is-on .step__num { opacity: 1; }
 
 @media (min-width: 768px) {
