@@ -4,8 +4,8 @@
    ========================================================= */
 
 // Enlace de agenda (Calendly, Cal.com, Google Calendar…). Mientras sea '#',
-// los botones abren un correo a contacto@pinuindustries.com.
-// TODO: poner aquí el enlace real de agenda.
+// los botones "Agenda" abren la ventana con el formulario de cita (#cita).
+// Sin JavaScript, los botones abren un correo a contacto@pinuindustries.com.
 const BOOKING_URL = '#';
 // Mientras no haya agenda, el botón abre un correo con una plantilla lista para llenar.
 const MAIL_BODY = [
@@ -19,6 +19,27 @@ const MAIL_BODY = [
   'Días y horarios que me acomodan:',
   'Teléfono / WhatsApp (opcional):',
 ].join('\n');
+// Clave pública de Web3Forms (web3forms.com): con ella, el formulario de cita
+// envía cada solicitud a contacto@pinuindustries.com. No es secreta: está hecha
+// para ir en la página. Mientras esté vacía, el formulario abre el correo del visitante.
+const WEB3FORMS_KEY = 'ad836976-9976-4cef-aaa1-70e4bbddc6c7';
+const CONTACT_EMAIL = 'contacto@pinuindustries.com';
+// Horario que se ofrece en el calendario de citas (hora del centro de México).
+// Días: 1 = lunes … 6 = sábado, 0 = domingo. Ajusta a tu disponibilidad real.
+const BOOKING_WEEKDAYS = [1, 2, 3, 4, 5];
+// Bloques de atención [inicio, fin) y cada cuántos minutos se ofrece una hora.
+// Con estos valores: 09:00, 09:30 … 13:30 y 16:00, 16:30 … 17:30.
+const BOOKING_HOURS = [['09:00', '14:00'], ['16:00', '18:00']];
+const BOOKING_STEP_MIN = 30;
+const BOOKING_TIMES = BOOKING_HOURS.flatMap(([from, to]) => {
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const out = [];
+  for (let t = toMin(from); t < toMin(to); t += BOOKING_STEP_MIN) {
+    out.push(String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'));
+  }
+  return out;
+});
+const BOOKING_DAYS_AHEAD = 45; // hasta cuántos días adelante se puede elegir
 const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
   + '?subject=' + encodeURIComponent('Quiero agendar mi diagnóstico')
   + '&body=' + encodeURIComponent(MAIL_BODY);
@@ -49,15 +70,333 @@ const FALLBACK_MAIL = 'mailto:contacto@pinuindustries.com'
     }
   });
 
-  /* ---------- Hero: si el canvas nunca arrancó (p. ej. hero.js no cargó),
-     se muestra el logo fijo en lugar de dejar el hueco vacío ---------- */
-  const heroEl = document.querySelector('.hero');
-  if (MOTION && heroEl) {
-    window.addEventListener('load', () => {
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        if (!heroEl.classList.contains('hero--canvas')) heroEl.classList.add('hero--fallback');
-      }));
+  /* ---------- Ventana para agendar (formulario de cita) ---------- */
+  const booking = document.getElementById('cita');
+  if (booking && typeof booking.showModal === 'function' && !(BOOKING_URL && BOOKING_URL !== '#')) {
+    const $ = (sel) => booking.querySelector(sel);
+    const form = $('[data-booking-form]');
+    const steps = { 1: $('[data-step="1"]'), 2: $('[data-step="2"]') };
+    const done = $('[data-view="done"]');
+    const status = $('[data-status]');
+    const submit = $('[data-submit]');
+    const step1Err = $('[data-step1-err]');
+    const grid = $('[data-cal-grid]');
+    const monthLabel = $('[data-cal-month]');
+    const prevBtn = $('[data-cal-prev]');
+    const nextBtn = $('[data-cal-next]');
+    const timesSet = $('[data-times]');
+    const timesGrid = $('[data-times-grid]');
+    const sumDate = $('[data-sum-date]');
+    const sumTime = $('[data-sum-time]');
+
+    const fmtLong = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const fmtShort = new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+    const fmtMonth = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' });
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+    const key = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
+    // Rango elegible: desde mañana hasta BOOKING_DAYS_AHEAD días
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const first = addDays(today, 1);
+    const last = addDays(today, BOOKING_DAYS_AHEAD);
+    const isOpenDay = (d) => d >= first && d <= last && BOOKING_WEEKDAYS.includes(d.getDay());
+    let firstOpen = first;
+    while (!isOpenDay(firstOpen) && firstOpen <= last) firstOpen = addDays(firstOpen, 1);
+
+    // Mes inicial: el del primer día disponible, salvo que a ese mes le queden
+    // menos de 3 días disponibles (entonces se abre el siguiente; las flechas permiten regresar)
+    const startMonth = () => {
+      const m = new Date(firstOpen.getFullYear(), firstOpen.getMonth(), 1);
+      let left = 0;
+      for (let d = firstOpen; d.getMonth() === m.getMonth(); d = addDays(d, 1)) if (isOpenDay(d)) left++;
+      const next = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+      return left < 3 && next <= last ? next : m;
+    };
+    let view = startMonth();
+    let pickedDate = null;
+    let pickedTime = null;
+    let focusDate = firstOpen;
+
+    function renderCalendar(moveFocus) {
+      monthLabel.textContent = cap(fmtMonth.format(view));
+      prevBtn.disabled = view <= new Date(first.getFullYear(), first.getMonth(), 1);
+      nextBtn.disabled = view >= new Date(last.getFullYear(), last.getMonth(), 1);
+      grid.textContent = '';
+      const lead = view.getDay(); // la semana empieza en domingo
+      for (let i = 0; i < lead; i++) grid.append(document.createElement('span'));
+      const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+      for (let n = 1; n <= days; n++) {
+        const d = new Date(view.getFullYear(), view.getMonth(), n);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cal__day';
+        b.textContent = n;
+        b.dataset.date = key(d);
+        b.setAttribute('aria-label', cap(fmtLong.format(d)));
+        const open = isOpenDay(d);
+        if (!open) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
+        if (key(d) === key(today)) b.classList.add('is-today');
+        const sel = pickedDate && key(d) === key(pickedDate);
+        b.setAttribute('aria-pressed', sel ? 'true' : 'false');
+        b.tabIndex = key(d) === key(focusDate) && open ? 0 : -1;
+        grid.append(b);
+      }
+      // Si el día con foco no está en este mes, el primero disponible recibe el tabindex
+      if (!grid.querySelector('.cal__day[tabindex="0"]')) {
+        const any = grid.querySelector('.cal__day:not([disabled])');
+        if (any) any.tabIndex = 0;
+      }
+      if (moveFocus) {
+        const f = grid.querySelector('.cal__day[tabindex="0"]');
+        if (f) f.focus();
+      }
+    }
+
+    function renderTimes() {
+      timesGrid.textContent = '';
+      timesSet.disabled = !pickedDate;
+      BOOKING_TIMES.forEach((t) => {
+        const label = document.createElement('label');
+        label.className = 'time';
+        const input = document.createElement('input');
+        input.type = 'radio'; input.name = 'hora'; input.value = t;
+        input.checked = pickedTime === t;
+        const span = document.createElement('span');
+        span.textContent = t;
+        label.append(input, span);
+        timesGrid.append(label);
+      });
+    }
+
+    function updateSummary() {
+      sumDate.textContent = pickedDate ? cap(fmtShort.format(pickedDate)).replace(/\./g, '') : 'Elige un día';
+      sumTime.textContent = pickedTime ? pickedTime + ' h' : 'Elige una hora';
+      sumDate.parentElement.classList.toggle('is-set', !!pickedDate);
+      sumTime.parentElement.classList.toggle('is-set', !!pickedTime);
+    }
+
+    grid.addEventListener('click', (e) => {
+      const b = e.target.closest('.cal__day');
+      if (!b || b.disabled) return;
+      const [y, m, d] = b.dataset.date.split('-').map(Number);
+      pickedDate = new Date(y, m - 1, d);
+      focusDate = pickedDate;
+      step1Err.hidden = true;
+      renderCalendar(true);
+      renderTimes();
+      updateSummary();
     });
+    // Teclado: flechas por día y semana, Inicio/Fin por semana
+    grid.addEventListener('keydown', (e) => {
+      const b = e.target.closest('.cal__day');
+      if (!b) return;
+      const deltas = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+      const [y, m, d] = b.dataset.date.split('-').map(Number);
+      let cur = new Date(y, m - 1, d);
+      let next = null;
+      if (e.key in deltas) {
+        next = addDays(cur, deltas[e.key]);
+        // salta días cerrados en la misma dirección
+        let guard = 0;
+        while (!isOpenDay(next) && next >= first && next <= last && guard++ < 14) next = addDays(next, Math.sign(deltas[e.key]));
+      } else if (e.key === 'Home' || e.key === 'End') {
+        // primer / último día abierto de esa semana
+        const dow = cur.getDay(); // domingo = 0
+        next = e.key === 'Home' ? addDays(cur, -dow) : addDays(cur, 6 - dow);
+        const dir = e.key === 'Home' ? 1 : -1;
+        while (!isOpenDay(next) && (dir > 0 ? next < cur : next > cur)) next = addDays(next, dir);
+      }
+      if (!next) return;
+      e.preventDefault();
+      if (!isOpenDay(next)) return;
+      focusDate = next;
+      view = new Date(next.getFullYear(), next.getMonth(), 1);
+      renderCalendar(true);
+    });
+    prevBtn.addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); renderCalendar(false); });
+    nextBtn.addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); renderCalendar(false); });
+    timesGrid.addEventListener('change', (e) => {
+      if (e.target.name !== 'hora') return;
+      pickedTime = e.target.value;
+      step1Err.hidden = true;
+      updateSummary();
+    });
+
+    const goStep = (n, focusTarget) => {
+      Object.entries(steps).forEach(([k, el]) => { el.hidden = +k !== n; });
+      booking.querySelectorAll('[data-step-dot]').forEach((li) => {
+        if (+li.dataset.stepDot === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+        li.classList.toggle('is-done', +li.dataset.stepDot < n);
+      });
+      if (focusTarget) focusTarget.focus();
+    };
+
+    $('[data-next]').addEventListener('click', () => {
+      if (!pickedDate || !pickedTime) {
+        step1Err.textContent = !pickedDate ? 'Elige un día en el calendario.' : 'Elige una hora para ese día.';
+        step1Err.hidden = false;
+        (!pickedDate ? grid.querySelector('.cal__day[tabindex="0"]') : timesGrid.querySelector('input')).focus();
+        return;
+      }
+      goStep(2, $('#cita-datos-title'));
+    });
+    $('[data-back]').addEventListener('click', () => {
+      goStep(1);
+      const sel = grid.querySelector('.cal__day[aria-pressed="true"]') || grid.querySelector('.cal__day[tabindex="0"]');
+      if (sel) sel.focus();
+    });
+
+    // ----- Paso 2: datos -----
+    const fields = { nombre: form.elements.nombre, correo: form.elements.correo, mensaje: form.elements.mensaje };
+    const MESSAGES = {
+      nombre: 'Escribe tu nombre.',
+      correo: 'Escribe un correo válido, por ejemplo nombre@empresa.com.',
+      mensaje: 'Cuéntanos brevemente qué te gustaría resolver.',
+    };
+    const setError = (k, msg) => {
+      const input = fields[k];
+      const err = document.getElementById(input.id + '-err');
+      input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      err.textContent = msg || '';
+      err.hidden = !msg;
+    };
+    const validate = (k) => {
+      const v = fields[k].value.trim();
+      let ok = v.length > 0;
+      if (ok && k === 'correo') ok = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+      setError(k, ok ? '' : MESSAGES[k]);
+      return ok;
+    };
+    Object.keys(fields).forEach((k) => {
+      fields[k].addEventListener('blur', () => { if (fields[k].value.trim()) validate(k); });
+      fields[k].addEventListener('input', () => { if (fields[k].getAttribute('aria-invalid') === 'true') validate(k); });
+    });
+
+    const reset = () => {
+      pickedDate = null; pickedTime = null; focusDate = firstOpen;
+      view = startMonth();
+      form.reset();
+      Object.keys(fields).forEach((k) => setError(k, ''));
+      status.textContent = '';
+      step1Err.hidden = true;
+      form.hidden = false; done.hidden = true;
+      renderCalendar(false); renderTimes(); updateSummary(); goStep(1);
+    };
+
+    const open = () => {
+      if (!done.hidden) reset();
+      // Si el visitante eligió una situación en Servicios, la usamos como punto de partida
+      const picked = document.querySelector('[data-configurator] input:checked');
+      if (picked && !fields.mensaje.value.trim()) fields.mensaje.value = picked.closest('label').textContent.trim() + '. ';
+      root.classList.add('is-modal');
+      booking.showModal();
+    };
+    const close = () => booking.close();
+    booking.addEventListener('close', () => root.classList.remove('is-modal'));
+    document.querySelectorAll('[data-cta]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        open();
+      });
+    });
+    booking.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
+    booking.addEventListener('click', (e) => { if (e.target === booking) close(); });
+
+    const data = () => {
+      const f = form.elements;
+      return {
+        nombre: f.nombre.value.trim(),
+        negocio: f.negocio.value.trim(),
+        correo: f.correo.value.trim(),
+        whatsapp: f.whatsapp.value.trim(),
+        mensaje: f.mensaje.value.trim(),
+        fecha: cap(fmtLong.format(pickedDate)),
+        hora: pickedTime + ' h (centro de México)',
+      };
+    };
+    const mailtoFor = (d) => 'mailto:' + CONTACT_EMAIL
+      + '?subject=' + encodeURIComponent('Quiero agendar mi diagnóstico')
+      + '&body=' + encodeURIComponent([
+        'Hola, equipo Pinu:', '', 'Quiero agendar mi diagnóstico gratuito.', '',
+        'Día: ' + d.fecha,
+        'Hora: ' + d.hora,
+        '',
+        'Nombre: ' + d.nombre,
+        'Negocio o giro: ' + (d.negocio || '-'),
+        'Correo: ' + d.correo,
+        'WhatsApp: ' + (d.whatsapp || '-'),
+        '', '¿Qué me gustaría resolver?', d.mensaje,
+      ].join('\n'));
+
+    const finish = (d) => {
+      $('[data-done-title]').textContent = '¡Listo, ' + d.nombre.split(/\s+/)[0] + '!';
+      $('[data-done-text]').textContent = 'Recibimos tu solicitud. Te escribimos a ' + d.correo + ' para confirmar tu cita:';
+      $('[data-done-when]').textContent = d.fecha + ' · ' + pickedTime + ' h';
+      form.hidden = true; done.hidden = false;
+      booking.querySelectorAll('[data-step-dot]').forEach((li) => { li.classList.add('is-done'); li.removeAttribute('aria-current'); });
+      $('[data-done-title]').focus();
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (steps[2].hidden) { $('[data-next]').click(); return; }
+      if (form.elements.botcheck.checked) return;
+      const invalid = Object.keys(fields).filter((k) => !validate(k));
+      if (invalid.length) {
+        status.textContent = invalid.length === 1 ? 'Revisa el campo marcado.' : 'Revisa los campos marcados.';
+        fields[invalid[0]].focus();
+        return;
+      }
+      const d = data();
+      if (!WEB3FORMS_KEY) {
+        window.location.href = mailtoFor(d);
+        status.textContent = 'Abrimos tu correo con la solicitud escrita; solo falta enviarlo.';
+        return;
+      }
+      submit.disabled = true;
+      submit.setAttribute('aria-busy', 'true');
+      status.textContent = 'Enviando…';
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            access_key: WEB3FORMS_KEY,
+            subject: 'Nueva cita de diagnóstico: ' + d.nombre + ' · ' + d.fecha + ', ' + pickedTime + ' h',
+            from_name: 'pinuindustries.com',
+            replyto: d.correo,
+            'Día': d.fecha,
+            'Hora': d.hora,
+            Nombre: d.nombre,
+            'Negocio o giro': d.negocio || '-',
+            Correo: d.correo,
+            WhatsApp: d.whatsapp || '-',
+            '¿Qué le gustaría resolver?': d.mensaje,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.success === false) throw new Error(json.message || res.status);
+        status.textContent = '';
+        finish(d);
+      } catch (err) {
+        status.textContent = '';
+        status.append('No pudimos enviar tu solicitud. Intenta de nuevo o ');
+        const link = document.createElement('a');
+        link.href = mailtoFor(d);
+        link.className = 'ulink';
+        link.textContent = 'escríbenos por correo';
+        status.append(link, '.');
+      } finally {
+        submit.disabled = false;
+        submit.removeAttribute('aria-busy');
+      }
+    });
+
+    renderCalendar(false);
+    renderTimes();
+    updateSummary();
   }
 
   /* ---------- Header ---------- */
